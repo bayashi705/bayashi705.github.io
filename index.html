@@ -129,9 +129,10 @@
     <canvas id="gameCanvas"></canvas>
 
     <div class="mobile-controls">
+        <!-- ★★★ 修正点: ボタンの順番を変更 ★★★ -->
         <button id="left-btn">◀</button>
-        <button id="fire-btn">弾</button>
         <button id="right-btn">▶</button>
+        <button id="fire-btn">弾</button>
     </div>
     
     <div id="game-over-modal" class="modal-overlay" style="display: none;">
@@ -213,12 +214,10 @@
         if (animationFrameId) cancelAnimationFrame(animationFrameId);
         if (invaderSpawnInterval) clearInterval(invaderSpawnInterval);
         
-        // ★★★ 修正点: 1.5秒ごとに出現させる ★★★
         invaderSpawnInterval = setInterval(spawnInvader, 1500);
         gameLoop();
     }
     
-    // ★★★ 追加: 敵を生成する関数 ★★★
     function spawnInvader() {
         if (gameOver) return;
         invaders.push({
@@ -294,17 +293,14 @@
             }
         }
 
-        // ★★★ 修正点: 敵がまっすぐ下に移動するロジック ★★★
         for (let i = invaders.length - 1; i >= 0; i--) {
             const invader = invaders[i];
             invader.y += invaderSpeed; // 下に移動
             
-            // 画面外に出たら消す
             if (invader.y > canvas.height) {
                 invaders.splice(i, 1);
             }
 
-            // 敵の弾の発射
             if (Math.random() < invaderFireChance) {
                 bullets.push({
                     x: invader.x + invader.width / 2 - 2.5,
@@ -348,10 +344,8 @@
                         invaders.splice(j, 1);
                         score += 10;
                         updateUI();
-                        // スコアに応じて難易度上昇
                         if (score > 0 && score % 100 === 0) {
                              invaderSpeed += 0.1;
-                             // 出現間隔を短くする
                              clearInterval(invaderSpawnInterval);
                              invaderSpawnInterval = setInterval(spawnInvader, 1500 - score);
                         }
@@ -378,7 +372,6 @@
             }
         });
         
-        // ★★★ 修正点: 勝利条件のチェック ★★★
         if (score >= 500) {
             endGame(true);
         }
@@ -399,7 +392,7 @@
     function endGame(isWin) {
         gameOver = true;
         cancelAnimationFrame(animationFrameId);
-        clearInterval(invaderSpawnInterval); // 敵の出現を停止
+        clearInterval(invaderSpawnInterval);
         modalTitle.textContent = isWin ? '勝利！' : 'ゲームオーバー';
         gameOverModal.style.display = 'flex';
     }
