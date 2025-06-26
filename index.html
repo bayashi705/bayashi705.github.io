@@ -31,7 +31,7 @@
             flex-direction: column;
             align-items: center;
             width: 100%;
-            max-width: 500px; /* 横長のゲームなので少し広めに */
+            max-width: 500px;
             padding: 1rem;
             box-sizing: border-box;
         }
@@ -53,17 +53,16 @@
             display: block;
         }
         
-        /* ★★★ 修正点: スマホ用操作ボタンのスタイル改善 ★★★ */
         .mobile-controls {
-            display: none; /* デフォルトでは非表示 */
+            display: none;
             width: 100%;
             margin-top: 1rem;
             justify-content: space-between;
         }
         
         .mobile-controls button {
-            width: 100px; /* ボタンを大きくする */
-            height: 70px;  /* ボタンを大きくする */
+            width: 100px;
+            height: 70px;
             font-size: 2.5rem;
             background-color: #333;
             border: 2px solid #fff;
@@ -73,13 +72,11 @@
             transition: transform 0.1s, background-color 0.1s;
         }
 
-        /* 押したときの見た目を変更 */
         .mobile-controls button:active {
             background-color: #555;
             transform: scale(0.95);
         }
         
-        /* スマホでのみ表示 */
         @media (hover: none) and (pointer: coarse) {
             .mobile-controls {
                 display: flex;
@@ -183,13 +180,10 @@
 
     // インベーダー
     let invaders = [];
-    const invaderGrid = { rows: 4, cols: 8 };
     const invaderSize = 20;
-    const invaderSpacing = 15;
-    let invaderDirection = 1;
     let invaderSpeed = 0.5;
-    const invaderDropDistance = 10;
-    const invaderFireChance = 0.002;
+    const invaderFireChance = 0.005; // 敵の弾の発射頻度
+    let invaderSpawnInterval; // 敵の出現間隔を管理するタイマー
 
     // 操作キー
     const keys = {
@@ -210,33 +204,36 @@
         player.y = canvas.height - player.height - 10;
         
         invaders = [];
-        for (let r = 0; r < invaderGrid.rows; r++) {
-            for (let c = 0; c < invaderGrid.cols; c++) {
-                invaders.push({
-                    x: c * (invaderSize + invaderSpacing) + 30,
-                    y: r * (invaderSize + invaderSpacing) + 30,
-                    width: invaderSize,
-                    height: invaderSize,
-                    color: 'white',
-                });
-            }
-        }
-        invaderDirection = 1;
         invaderSpeed = 0.5;
-        
         bullets.length = 0;
         
         gameOverModal.style.display = 'none';
         updateUI();
+        
         if (animationFrameId) cancelAnimationFrame(animationFrameId);
+        if (invaderSpawnInterval) clearInterval(invaderSpawnInterval);
+        
+        // ★★★ 修正点: 1.5秒ごとに出現させる ★★★
+        invaderSpawnInterval = setInterval(spawnInvader, 1500);
         gameLoop();
     }
     
+    // ★★★ 追加: 敵を生成する関数 ★★★
+    function spawnInvader() {
+        if (gameOver) return;
+        invaders.push({
+            x: Math.random() * (canvas.width - invaderSize),
+            y: 0, // 画面の上部から出現
+            width: invaderSize,
+            height: invaderSize,
+            color: 'white',
+        });
+    }
+
     // --- イベントリスナー ---
     document.addEventListener('keydown', (e) => { if(keys[e.code] !== undefined) keys[e.code] = true; });
     document.addEventListener('keyup', (e) => { if(keys[e.code] !== undefined) keys[e.code] = false; });
     
-    // ★★★ 修正点: モバイル操作のロジックを改善 ★★★
     function fireBullet() {
         if (playerFireCooldown > 0) return;
         bullets.push({
@@ -251,7 +248,6 @@
         playerFireCooldown = bulletCooldown;
     }
     
-    // 移動ボタン（押している間だけ動く）
     leftBtn.addEventListener('touchstart', (e) => { e.preventDefault(); keys.ArrowLeft = true; });
     leftBtn.addEventListener('touchend', () => { keys.ArrowLeft = false; });
     leftBtn.addEventListener('touchcancel', () => { keys.ArrowLeft = false; });
@@ -260,7 +256,6 @@
     rightBtn.addEventListener('touchend', () => { keys.ArrowRight = false; });
     rightBtn.addEventListener('touchcancel', () => { keys.ArrowRight = false; });
     
-    // 射撃ボタン（タップで発射）
     fireBtn.addEventListener('touchstart', (e) => { 
         e.preventDefault(); 
         fireBullet();
@@ -273,7 +268,6 @@
         if (keys.ArrowRight && player.x < canvas.width - player.width) {
             player.x += player.speed;
         }
-        // PCのスペースキーでの射撃
         if (keys.Space) {
             fireBullet();
         }
@@ -300,12 +294,17 @@
             }
         }
 
-        let wallHit = false;
-        invaders.forEach(invader => {
-            invader.x += invaderDirection * invaderSpeed;
-            if (invader.x <= 0 || invader.x >= canvas.width - invader.width) {
-                wallHit = true;
+        // ★★★ 修正点: 敵がまっすぐ下に移動するロジック ★★★
+        for (let i = invaders.length - 1; i >= 0; i--) {
+            const invader = invaders[i];
+            invader.y += invaderSpeed; // 下に移動
+            
+            // 画面外に出たら消す
+            if (invader.y > canvas.height) {
+                invaders.splice(i, 1);
             }
+
+            // 敵の弾の発射
             if (Math.random() < invaderFireChance) {
                 bullets.push({
                     x: invader.x + invader.width / 2 - 2.5,
@@ -317,11 +316,6 @@
                     team: 'invader'
                 });
             }
-        });
-
-        if (wallHit) {
-            invaderDirection *= -1;
-            invaders.forEach(invader => invader.y += invaderDropDistance);
         }
     }
 
@@ -354,7 +348,13 @@
                         invaders.splice(j, 1);
                         score += 10;
                         updateUI();
-                        if (invaders.length % 8 === 0) invaderSpeed += 0.1;
+                        // スコアに応じて難易度上昇
+                        if (score > 0 && score % 100 === 0) {
+                             invaderSpeed += 0.1;
+                             // 出現間隔を短くする
+                             clearInterval(invaderSpawnInterval);
+                             invaderSpawnInterval = setInterval(spawnInvader, 1500 - score);
+                        }
                         break; 
                     }
                 }
@@ -373,12 +373,13 @@
         }
         
         invaders.forEach(invader => {
-            if (isColliding(invader, player) || invader.y > player.y) {
+            if (isColliding(invader, player) || invader.y + invader.height > player.y) {
                  endGame(false);
             }
         });
         
-        if (invaders.length === 0) {
+        // ★★★ 修正点: 勝利条件のチェック ★★★
+        if (score >= 500) {
             endGame(true);
         }
     }
@@ -398,13 +399,13 @@
     function endGame(isWin) {
         gameOver = true;
         cancelAnimationFrame(animationFrameId);
+        clearInterval(invaderSpawnInterval); // 敵の出現を停止
         modalTitle.textContent = isWin ? '勝利！' : 'ゲームオーバー';
         gameOverModal.style.display = 'flex';
     }
 
     restartButton.addEventListener('click', init);
     
-    // ゲーム開始
     init();
 
 </script>
