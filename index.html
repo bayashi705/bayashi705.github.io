@@ -3,245 +3,336 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>シンプルな電卓</title>
+    <title>ブロック崩しゲーム</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700&display=swap" rel="stylesheet">
     <style>
-        /* 基本的なスタイル */
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-            margin: 0;
+            font-family: 'Noto Sans JP', sans-serif;
             display: flex;
             justify-content: center;
             align-items: center;
             height: 100vh;
-            background-color: #f0f2f5;
-            -webkit-user-select: none; /* テキスト選択を無効化 */
-            user-select: none;
-        }
-
-        /* 電卓全体のラッパー */
-        .calculator-wrapper {
-            width: 100%;
-            max-width: 360px;
-            background-color: #ffffff;
-            border-radius: 20px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            background-color: #111827; /* より濃い背景色 */
+            margin: 0;
             overflow: hidden;
-            border: 1px solid #dcdcdc;
+            touch-action: none;
         }
-
-        /* 表示画面 */
-        .display {
-            background-color: #222;
-            color: #fff;
-            font-size: 2.8rem;
-            font-weight: 300;
-            padding: 25px 20px;
-            text-align: right;
-            word-wrap: break-word;
-            word-break: break-all;
-            min-height: 50px;
+        .game-wrapper {
+            width: 100%;
+            max-width: 500px;
+            padding: 1rem;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
         }
-
-        /* ボタンのグリッド */
-        .buttons {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 1px;
-            background-color: #dcdcdc;
+        .game-container {
+            position: relative;
+            width: 100%;
         }
-
-        /* ボタンの共通スタイル */
-        .btn {
-            background-color: #f8f9fa;
-            border: none;
-            padding: 20px;
-            font-size: 1.5rem;
-            cursor: pointer;
-            transition: background-color 0.2s;
-            -webkit-tap-highlight-color: rgba(0,0,0,0.1);
-            touch-action: manipulation;
+        canvas {
+            background: #1f2937;
+            display: block;
+            border-radius: 0.5rem;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+            width: 100%;
+            aspect-ratio: 4 / 3;
         }
-
-        /* 押されているときのエフェクト */
-        .btn.active, .btn:active {
-            background-color: #d1d5db;
-            transform: scale(0.98);
-        }
-
-        /* 演算子ボタンのスタイル */
-        .operator {
-            background-color: #ff9500;
+        .info-panel {
             color: white;
+            margin-bottom: 1rem;
+            font-size: 1.25rem;
+            width: 100%;
+            display: flex;
+            justify-content: space-around;
         }
-        .operator.active, .operator:active {
-            background-color: #d97706;
+        .controls {
+            color: #9ca3af;
+            margin-top: 1rem;
+            font-size: 0.9rem;
         }
-
-        /* ACやCボタンのスタイル */
-        .function {
-            background-color: #d4d4d2;
-        }
-        .function.active, .function:active {
-            background-color: #b9b9b7;
-        }
-
-        /* 0ボタンを2マス分にする */
-        .zero {
-            grid-column: span 2;
+        /* ★★★ 追加点: ゲーム開始/終了時のオーバーレイ ★★★ */
+        .overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            border-radius: 0.5rem;
+            text-align: center;
         }
     </style>
 </head>
 <body>
 
-    <div class="calculator-wrapper">
-        <div id="display" class="display">0</div>
-        <div class="buttons">
-            <button class="btn function" id="clear">AC</button>
-            <button class="btn function" id="sign">+/-</button>
-            <button class="btn function" id="percent">%</button>
-            <button class="btn operator" data-operator="/">÷</button>
-            <button class="btn" data-number="7">7</button>
-            <button class="btn" data-number="8">8</button>
-            <button class="btn" data-number="9">9</button>
-            <button class="btn operator" data-operator="*">×</button>
-            <button class="btn" data-number="4">4</button>
-            <button class="btn" data-number="5">5</button>
-            <button class="btn" data-number="6">6</button>
-            <button class="btn operator" data-operator="-">-</button>
-            <button class="btn" data-number="1">1</button>
-            <button class="btn" data-number="2">2</button>
-            <button class="btn" data-number="3">3</button>
-            <button class="btn operator" data-operator="+">+</button>
-            <button class="btn zero" data-number="0">0</button>
-            <button class="btn" data-number=".">.</button>
-            <button class="btn operator" id="equals">=</button>
-        </div>
+<div class="game-wrapper">
+    <h1 class="text-3xl sm:text-4xl font-bold text-white mb-4">ブロック崩し</h1>
+    <div id="info-panel" class="info-panel">
+        <span>スコア: <span id="score">0</span></span>
+        <span>ライフ: <span id="lives">3</span></span>
     </div>
 
-    <script>
-        const display = document.getElementById('display');
-        const buttons = document.querySelector('.buttons');
-        const clearButton = document.getElementById('clear');
+    <div class="game-container">
+        <canvas id="gameCanvas"></canvas>
 
-        let firstValue = null;
-        let operator = null;
-        let waitingForSecondValue = false;
-        let currentValue = '0';
+        <!-- ★★★ 追加点: ゲーム開始用のオーバーレイ ★★★ -->
+        <div id="start-overlay" class="overlay">
+            <h2 class="text-3xl font-bold mb-4">タップして開始</h2>
+            <p>パドルをドラッグして操作</p>
+        </div>
 
-        function updateDisplay() {
-            display.textContent = currentValue;
-            if (currentValue !== '0' && !waitingForSecondValue) {
-                clearButton.textContent = 'C';
-            } else {
-                clearButton.textContent = 'AC';
+        <!-- ゲームオーバー/クリア表示用のモーダル -->
+        <div id="modal" class="hidden overlay">
+             <div class="bg-white text-gray-800 p-8 rounded-lg text-center shadow-xl mx-4">
+                <h2 id="modal-title" class="text-3xl font-bold mb-4"></h2>
+                <p id="modal-score" class="text-xl mb-6"></p>
+                <button id="restart-button" class="bg-blue-600 text-white font-bold py-3 px-6 rounded-lg hover:bg-blue-700 transition">
+                    もう一度遊ぶ
+                </button>
+            </div>
+        </div>
+    </div>
+    <div class="controls">
+        PC: マウスで操作 / Touch: 画面をドラッグ
+    </div>
+</div>
+
+<script>
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    const scoreElement = document.getElementById('score');
+    const livesElement = document.getElementById('lives');
+
+    const startOverlay = document.getElementById('start-overlay');
+    const modal = document.getElementById('modal');
+    const modalTitle = document.getElementById('modal-title');
+    const modalScore = document.getElementById('modal-score');
+    const restartButton = document.getElementById('restart-button');
+
+    // --- ゲームの状態管理 ---
+    let score, lives;
+    let gamePaused = true;
+    let animationFrameId;
+
+    // --- ゲーム要素のサイズや位置 ---
+    let ballRadius, x, y, dx, dy;
+    let paddleHeight, paddleWidth, paddleX;
+    let brickRowCount, brickColumnCount, brickWidth, brickHeight, brickPadding, brickOffsetTop, brickOffsetLeft;
+    let bricks = [];
+
+    function resetGameElements() {
+        canvas.width = canvas.clientWidth;
+        canvas.height = canvas.clientHeight;
+
+        ballRadius = canvas.width * 0.02;
+        paddleWidth = canvas.width * 0.25;
+        paddleHeight = canvas.height * 0.03;
+        brickRowCount = 5;
+        brickColumnCount = 7;
+        brickPadding = canvas.width * 0.015;
+        const totalPaddingWidth = brickPadding * (brickColumnCount + 1);
+        brickWidth = (canvas.width - totalPaddingWidth) / brickColumnCount;
+        brickHeight = canvas.height * 0.06;
+        brickOffsetTop = canvas.height * 0.1;
+        brickOffsetLeft = brickPadding;
+
+        x = canvas.width / 2;
+        y = canvas.height - paddleHeight - ballRadius - 10;
+        paddleX = (canvas.width - paddleWidth) / 2;
+
+        const speed = canvas.width * 0.006;
+        dx = speed;
+        dy = -speed;
+    }
+
+    function setupBricks() {
+        bricks = [];
+        for (let c = 0; c < brickColumnCount; c++) {
+            bricks[c] = [];
+            for (let r = 0; r < brickRowCount; r++) {
+                bricks[c][r] = { x: 0, y: 0, status: 1 };
             }
         }
+    }
 
-        updateDisplay();
-
-        function handleInteraction(target) {
-            if (!target.matches('button')) return;
-
-            if (target.dataset.number) {
-                inputNumber(target.dataset.number);
-            } else if (target.dataset.operator) {
-                handleOperator(target.dataset.operator);
-            } else if (target.id === 'equals') {
-                handleOperator('=');
-            } else if (target.id === 'clear') {
-                clear();
-            } else if (target.id === 'sign') {
-                toggleSign();
-            } else if (target.id === 'percent') {
-                inputPercent();
-            }
-            updateDisplay();
+    // --- イベントリスナー ---
+    function handlePointerMove(e) {
+        if (gamePaused) return;
+        const relativeX = (e.clientX || e.touches[0].clientX) - canvas.getBoundingClientRect().left;
+        if (relativeX > paddleWidth / 2 && relativeX < canvas.width - paddleWidth / 2) {
+            paddleX = relativeX - paddleWidth / 2;
         }
+        e.preventDefault();
+    }
 
-        // ★★★ 修正点: PCとスマホでイベントを使い分ける ★★★
-        let isTouch = false;
-        buttons.addEventListener('touchstart', (e) => {
-            isTouch = true;
-            e.preventDefault(); // デフォルトのタッチ動作をキャンセル
-            const target = e.target;
-            target.classList.add('active'); // 押した見た目を追加
-            handleInteraction(target);
-        }, { passive: false });
+    canvas.addEventListener("touchmove", handlePointerMove, false);
+    canvas.addEventListener("mousemove", handlePointerMove, false);
 
-        buttons.addEventListener('touchend', (e) => {
-            e.target.classList.remove('active'); // 押した見た目を削除
-        });
+    restartButton.addEventListener('click', () => {
+        modal.classList.add('hidden');
+        init();
+    });
 
-        // スマホでtouchstartが反応した場合、mousedownは無視する
-        buttons.addEventListener('mousedown', (e) => {
-            if (isTouch) {
-                isTouch = false; // フラグをリセット
-                return;
+    startOverlay.addEventListener('click', () => {
+        startOverlay.classList.add('hidden');
+        init();
+    });
+
+    // --- 描画関数 ---
+    function drawElements() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        drawBricks();
+        drawBall();
+        drawPaddle();
+    }
+
+    function drawBall() {
+        ctx.beginPath();
+        ctx.arc(x, y, ballRadius, 0, Math.PI * 2);
+        ctx.fillStyle = "#34d399";
+        ctx.fill();
+        ctx.closePath();
+    }
+
+    function drawPaddle() {
+        ctx.beginPath();
+        ctx.rect(paddleX, canvas.height - paddleHeight, paddleWidth, paddleHeight);
+        ctx.fillStyle = "#60a5fa";
+        ctx.fill();
+        ctx.closePath();
+    }
+
+    function drawBricks() {
+        const colors = ["#f87171", "#fbbf24", "#4ade80", "#60a5fa", "#a78bfa"];
+        for (let c = 0; c < brickColumnCount; c++) {
+            for (let r = 0; r < brickRowCount; r++) {
+                if (bricks[c][r].status == 1) {
+                    const brickX = (c * (brickWidth + brickPadding)) + brickOffsetLeft;
+                    const brickY = (r * (brickHeight + brickPadding)) + brickOffsetTop;
+                    bricks[c][r].x = brickX;
+                    bricks[c][r].y = brickY;
+                    ctx.beginPath();
+                    ctx.rect(brickX, brickY, brickWidth, brickHeight);
+                    ctx.fillStyle = colors[r % colors.length];
+                    ctx.fill();
+                    ctx.closePath();
+                }
             }
-            handleInteraction(e.target);
-        });
+        }
+    }
 
+    function collisionDetection() {
+        for (let c = 0; c < brickColumnCount; c++) {
+            for (let r = 0; r < brickRowCount; r++) {
+                const b = bricks[c][r];
+                if (b.status == 1 && x > b.x && x < b.x + brickWidth && y > b.y && y < b.y + brickHeight) {
+                    dy = -dy;
+                    b.status = 0;
+                    score++;
+                    scoreElement.textContent = score;
+                    if (score == brickRowCount * brickColumnCount) {
+                        showModal("ゲームクリア！", `最終スコア: ${score}`);
+                    }
+                }
+            }
+        }
+    }
 
-        function inputNumber(number) {
-            if (waitingForSecondValue) {
-                currentValue = number;
-                waitingForSecondValue = false;
+    function showModal(title, scoreText) {
+        gamePaused = true;
+        modalTitle.textContent = title;
+        modalScore.textContent = scoreText;
+        modal.classList.remove('hidden');
+        cancelAnimationFrame(animationFrameId);
+    }
+
+    function update() {
+        if (gamePaused) return;
+
+        // 壁との衝突判定
+        if (x + dx > canvas.width - ballRadius || x + dx < ballRadius) dx = -dx;
+
+        // 天井との衝突判定
+        if (y + dy < ballRadius) dy = -dy;
+        // 床との衝突判定（ゲームオーバー処理）
+        else if (y + dy > canvas.height - ballRadius) {
+            // パドルとの衝突判定
+            if (x > paddleX && x < paddleX + paddleWidth) {
+                dy = -dy;
             } else {
-                if (currentValue === '0' && number !== '.') {
-                    currentValue = number;
-                } else if (number === '.' && currentValue.includes('.')) {
-                    return;
+                lives--;
+                livesElement.textContent = lives;
+                if (!lives) {
+                    showModal("ゲームオーバー", `最終スコア: ${score}`);
+                    return; // ゲームループを抜ける
                 } else {
-                    if (currentValue.length > 15) return;
-                    currentValue += number;
+                    // ライフを失った後のリセット
+                    x = canvas.width / 2;
+                    y = canvas.height - paddleHeight - ballRadius - 10;
+                    paddleX = (canvas.width - paddleWidth) / 2;
                 }
             }
         }
 
-        function handleOperator(nextOperator) {
-            const value = parseFloat(currentValue);
+        x += dx;
+        y += dy;
+    }
 
-            if (operator && waitingForSecondValue) {
-                operator = nextOperator;
-                return;
-            }
+    // メインのゲームループ
+    function gameLoop() {
+        update(); // ボールの位置などを更新
+        drawElements(); // 更新された位置で描画
+        collisionDetection(); // 衝突判定
 
-            if (firstValue === null) {
-                firstValue = value;
-            } else if (operator) {
-                const result = calculate(firstValue, value, operator);
-                currentValue = `${parseFloat(result.toPrecision(15))}`;
-                firstValue = result;
-            }
-
-            waitingForSecondValue = true;
-            operator = nextOperator;
+        if (!gamePaused) {
+            animationFrameId = requestAnimationFrame(gameLoop);
         }
+    }
 
-        function calculate(first, second, op) {
-            if (op === '+') return first + second;
-            if (op === '-') return first - second;
-            if (op === '*') return first * second;
-            if (op === '/') return first / second;
-            return second;
-        }
+    // ゲームの初期化と開始
+    function init() {
+        resetGameElements();
+        setupBricks();
+        score = 0;
+        lives = 3;
+        scoreElement.textContent = score;
+        livesElement.textContent = lives;
+        gamePaused = false;
 
-        function clear() {
-            if (clearButton.textContent === 'AC') {
-                firstValue = null;
-                operator = null;
-                waitingForSecondValue = false;
-            }
-            currentValue = '0';
-        }
+        cancelAnimationFrame(animationFrameId); // 古いループをクリア
+        gameLoop();
+    }
 
-        function toggleSign() {
-            currentValue = (parseFloat(currentValue) * -1).toString();
-        }
+    // ★★★ 修正点: ページ読み込み完了後に初期描画だけを行う ★★★
+    window.addEventListener('load', () => {
+        resetGameElements();
+        setupBricks();
+        drawElements(); // 静的な初期画面を描画
 
-        function inputPercent() {
-            currentValue = (parseFloat(currentValue) / 100).toString();
-        }
-    </script>
+        // ウィンドウリサイズ時の処理
+        let resizeTimer;
+        window.addEventListener('resize', () => {
+            gamePaused = true;
+            cancelAnimationFrame(animationFrameId);
+            clearTimeout(resizeTimer);
+            resizeTimer = setTimeout(() => {
+                resetGameElements();
+                setupBricks();
+                drawElements();
+                startOverlay.classList.remove('hidden'); // 開始画面に戻す
+                modal.classList.add('hidden');
+            }, 250);
+        }, false);
+    });
+
+</script>
 </body>
 </html>
